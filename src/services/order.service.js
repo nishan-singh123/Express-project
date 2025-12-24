@@ -1,0 +1,161 @@
+import crypto from "crypto";
+
+import { ORDER_STATUS_CANCELLED, ORDER_STATUS_CONFIRMED } from "../constants/orderStatuses.js";
+import { payViaKhalti } from "../utils/payment.js";
+import { ROLE_ADMIN } from "../constants/roles.js";
+import Order from "../models/Order.js";
+import Payment from "../models/Payment.js";
+import mongoose from "mongoose";
+
+const getOrders = async () => {
+    return await Order.find().sort({ createdAt: -1 }).populate("user", "name email phone").populate("orderItems.product", "name brand category price imageUrls");
+};
+
+const getOrdersByUser = async (userId) => {
+    return await Order.find({ user: userId })
+        .sort({ createdAt: -1 })
+        .populate("user", "name email phone")
+        .populate("orderItems.product", "name brand category price imageUrls");
+};
+
+const getOrderById = async (id) => {
+    const order = await Order.findById(id)
+        .populate("user", "name email phone")
+        .populate("orderItems.product", "name brand category price imageUrls");
+
+    if (!order)
+        throw {
+            status: 404,
+            message: "Order not found.",
+        };
+
+    return order;
+};
+
+const createOrder = async (data, userId) => {
+    const orderNumber = crypto.randomUUID();
+
+    return await Order.create({ ...data, user: userId, orderNumber });
+};
+
+const updateOrderStatus = async (id, status) => {
+    return await Order.findByIdAndUpdate(id, { status }, { new: true });
+};
+
+const cancelOrder = async (id, user) => {
+    const order = await getOrderById(id);
+
+    if (!user.roles.includes(ROLE_ADMIN) && order.user._id != user._id)
+        throw {
+            status: 403,
+            message: "Access denied.",
+        };
+
+    return await Order.findByIdAndUpdate(
+        id,
+        { status: ORDER_STATUS_CANCELLED },
+        { new: true }
+    );
+};
+
+const deleteOrder = async (id) => {
+    await getOrderById(id);
+
+    return await Order.findByIdAndDelete(id);
+};
+
+const orderPaymentViaKhalti = async (id) => {
+    const order = await getOrderById(id);
+
+    const orderPayment = await Payment.create({
+        method: "ONLINE",
+        amount: order.totalPrice,
+    });
+
+    await Order.findByIdAndUpdate(id, {
+        payment: orderPayment._id,
+    });
+
+    return await payViaKhalti({
+        amount: order.totalPrice,
+        purchaseOrderId: order.orderNumber,
+        purchaseOrderName: order.orderItems[0].product.name,
+        customer: order.user,
+    });
+};
+
+const orderPaymentViaCash = async (id) => {
+    const order = await getOrderById(id);
+
+    const orderPayment = await Payment.create({
+        method: "CASH",
+        amount: order.totalPrice,
+    });
+
+    return await Order.findByIdAndUpdate(id, {
+        payment: orderPayment._id,
+        status: ORDER_STATUS_CONFIRMED,
+    }, { new: true }
+    );
+};
+
+const confirmOrderPayment = async (id, status) => {
+    const order = await getOrderById(id);
+
+    if (status.toUpperCase() !== "COMPLETED") {
+        await Payment.findByIdAndUpdate(order.payment, {
+            status: "FAILED",
+        });
+
+        throw {
+            status: 400,
+            message: "Payment failed.",
+        };
+    }
+
+    await Payment.findByIdAndUpdate(order.payment, {
+        status: "SUCCESS",
+    });
+
+    return await Order.findByIdAndUpdate(id, {
+        status: ORDER_STATUS_CONFIRMED,
+    }, { new: true });
+};
+
+const getOrdersByMerchant = async (merchantId) => {
+    return await Order.aggregate([
+        {
+            $lookup: {
+                from: "products",
+                localField: "orderItems.product",
+                foreignField: "_id",
+                as: "orderedProducts",
+            },
+        },
+        {
+            $unwind: "$orderedProducts",
+        },
+        {
+            $match: {
+                "orderedProducts.createdBy": new mongoose.Types.ObjectId(merchantId),
+            },
+        },
+        {
+            $project: {
+                orderNumber: 1,
+                payment: 1,
+                shippingAddress: 1,
+                status: 1,
+                totalPrice: 1,
+                user: 1,
+                "orderedProducts.price": 1,
+                "orderedProducts.name": 1,
+                "orderedProducts.imageUrls": 1,
+                "orderedProducts.category": 1,
+                "orderedProducts.brand": 1,
+            },
+        },
+    ]);
+};
+
+export default { createOrder, getOrders, getOrdersByUser, cancelOrder, deleteOrder, getOrderById, updateOrderStatus, orderPaymentViaKhalti, confirmOrderPayment, orderPaymentViaCash, getOrdersByMerchant };
