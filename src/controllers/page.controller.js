@@ -3,7 +3,7 @@ import productService from "../services/product.service.js";
 const homePage = async (req, res) => {
     try {
         res.render("index", {
-            title: "Techno Ecommerce",
+            title: "Techno E-commerce",
             label: "Buy best electronic items",
         });
     } catch (error) {
