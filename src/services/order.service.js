@@ -77,6 +77,7 @@ const orderPaymentViaKhalti = async (id) => {
     });
 
     return await payViaKhalti({
+        id,
         amount: order.totalPrice,
         purchaseOrderId: order.orderNumber,
         purchaseOrderName: order.orderItems[0].product.name,
