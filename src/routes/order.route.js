@@ -56,6 +56,12 @@ router.put("/:id/status", validate(orderStatusSchema), roleBasedAuth(ROLE_ADMIN)
 router.post("/:id/payment/khalti", roleBasedAuth(ROLE_USER), orderController.orderPaymentViaKhalti);
 
 /**
+ * Url: /api/orders/:id/payment/stripe
+ * Method: POST
+ */
+router.post("/:id/payment/stripe", roleBasedAuth(ROLE_USER), orderController.orderPaymentViaStripe);
+
+/**
  * Url: /api/orders/:id/payment/cash
  * Method: POST
  */

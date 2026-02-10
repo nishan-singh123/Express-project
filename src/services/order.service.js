@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 import { ORDER_STATUS_CANCELLED, ORDER_STATUS_CONFIRMED } from "../constants/orderStatuses.js";
-import { payViaKhalti } from "../utils/payment.js";
+import { payViaKhalti, payViaStripe } from "../utils/payment.js";
 import { ROLE_ADMIN } from "../constants/roles.js";
 import Order from "../models/Order.js";
 import Payment from "../models/Payment.js";
@@ -85,6 +85,26 @@ const orderPaymentViaKhalti = async (id) => {
     });
 };
 
+const orderPaymentViaStripe = async (id) => {
+    const order = await getOrderById(id);
+
+    const orderPayment = await Payment.create({
+        method: "CARD",
+        amount: order.totalPrice,
+    });
+
+    await Order.findByIdAndUpdate(id, {
+        payment: orderPayment._id,
+    });
+
+    return await payViaStripe({
+        amount: order.totalPrice,
+        orderId: order.orderNumber,
+        orderName: order.orderItems[0].product.name,
+        customer: order.user,
+    });
+};
+
 const orderPaymentViaCash = async (id) => {
     const order = await getOrderById(id);
 
@@ -159,4 +179,4 @@ const getOrdersByMerchant = async (merchantId) => {
     ]);
 };
 
-export default { createOrder, getOrders, getOrdersByUser, cancelOrder, deleteOrder, getOrderById, updateOrderStatus, orderPaymentViaKhalti, confirmOrderPayment, orderPaymentViaCash, getOrdersByMerchant };
+export default { createOrder, getOrders, getOrdersByUser, cancelOrder, deleteOrder, getOrderById, updateOrderStatus, orderPaymentViaKhalti, confirmOrderPayment, orderPaymentViaCash, getOrdersByMerchant, orderPaymentViaStripe };
