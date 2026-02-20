@@ -18,9 +18,9 @@ const getOrders = async (status) => {
 };
 
 const getOrdersByUser = async (status, userId) => {
-    let filter = {user: userId};
+  let filter = { user: userId };
 
-    if(status) filter.status = status;
+  if (status) filter.status = status;
 
   return await Order.find(filter)
     .sort({ createdAt: -1 })
