@@ -23,6 +23,8 @@ connectCloudinary();
 
 app.use(bodyParser.json());
 
+app.use(express.json());
+
 app.use(logger);
 
 app.use(cors());
