@@ -25,6 +25,8 @@ app.use(bodyParser.json());
 
 app.use(logger);
 
+app.use(express.json());
+
 app.use(cors());
 
 app.set("view engine", "hbs");
