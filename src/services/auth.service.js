@@ -34,6 +34,7 @@ const login = async (data) => {
     roles: user.roles,
     phone: user.phone,
     isActive: user.isActive,
+    profileImageUrl: user?.profileImageUrl,
   };
 };
 
@@ -55,7 +56,6 @@ const register = async (data) => {
     phone: data.phone,
     address: data.address,
     password: hashedPassword,
-    profileImageUrl: data.profileImageUrl,
   });
   return {
     _id: createdUser._id,
