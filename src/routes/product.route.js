@@ -1,28 +1,28 @@
 import express from "express";
 
+import { productSchema } from "../libs/schemas/product.js";
+import { ROLE_MERCHANT } from "../constants/roles.js";
 import auth from "../middlewares/auth.js";
 import productController from "../controllers/product.controller.js";
 import roleBasedAuth from "../middlewares/roleBasedAuth.js";
 import validate from "../middlewares/validator.js";
-import { ROLE_MERCHANT } from "../constants/roles.js";
-import { productSchema } from "../libs/schemas/product.js";
 
 const router = express.Router();
 
 /**
  * GET /api/products
  */
-
 router.get("/", productController.getProducts);
 
 router.get("/brands", productController.getBrands);
 
 router.get("/categories", productController.getCategories);
 
+router.get("/total", productController.getTotalCount);
+
 /**
  * GET /api/products/:id
  */
-
 router.get("/:id", productController.getProductById);
 
 /**
