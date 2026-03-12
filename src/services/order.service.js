@@ -11,13 +11,53 @@ import Payment from "../models/Payment.js";
 import mongoose from "mongoose";
 
 const getOrders = async (status) => {
-  let filter = {};
+  const filter = {};
+
   if (status) filter.status = status;
 
-  return await Order.find(filter)
-    .sort({ createdAt: -1 })
-    .populate("user", "name email phone")
-    .populate("orderItems.product", "name brand category price imageUrls");
+  return await Order.aggregate([
+    {
+      $lookup: {
+        from: "products",
+        localField: "orderItems.product",
+        foreignField: "_id",
+        as: "orderItems",
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "user",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    {
+      $unwind: "$user",
+    },
+    {
+      $match: filter,
+    },
+    {
+      $project: {
+        "orderItems._id": 1,
+        "orderItems.name": 1,
+        "orderItems.brand": 1,
+        "orderItems.category": 1,
+        "orderItems.price": 1,
+        orderNumber: 1,
+        payment: 1,
+        shippingAddress: 1,
+        createdAt: 1,
+        status: 1,
+        totalPrice: 1,
+        "user.name": 1,
+        "user.email": 1,
+        "user.address": 1,
+        "user.phone": 1,
+      },
+    },
+  ]);
 };
 
 const getOrdersByUser = async (status, userId) => {
@@ -163,37 +203,53 @@ const confirmOrderPayment = async (id, status) => {
   );
 };
 
-const getOrdersByMerchant = async (merchantId) => {
+const getOrdersByMerchant = async (merchantId, status) => {
+  const filter = {
+    "orderItems.createdBy": new mongoose.Types.ObjectId(merchantId),
+  };
+
+  if (status) filter.status = status;
+
   return await Order.aggregate([
     {
       $lookup: {
         from: "products",
         localField: "orderItems.product",
         foreignField: "_id",
-        as: "orderedProducts",
+        as: "orderItems",
       },
     },
     {
-      $unwind: "$orderedProducts",
+      $lookup: {
+        from: "users",
+        localField: "user",
+        foreignField: "_id",
+        as: "user",
+      },
     },
     {
-      $match: {
-        "orderedProducts.createdBy": new mongoose.Types.ObjectId(merchantId),
-      },
+      $unwind: "$user",
+    },
+    {
+      $match: filter,
     },
     {
       $project: {
+        "orderItems._id": 1,
+        "orderItems.name": 1,
+        "orderItems.brand": 1,
+        "orderItems.category": 1,
+        "orderItems.price": 1,
         orderNumber: 1,
         payment: 1,
         shippingAddress: 1,
+        createdAt: 1,
         status: 1,
         totalPrice: 1,
-        user: 1,
-        "orderedProducts.price": 1,
-        "orderedProducts.name": 1,
-        "orderedProducts.imageUrls": 1,
-        "orderedProducts.category": 1,
-        "orderedProducts.brand": 1,
+        "user.name": 1,
+        "user.email": 1,
+        "user.address": 1,
+        "user.phone": 1,
       },
     },
   ]);
@@ -203,13 +259,13 @@ export default {
   createOrder,
   getOrders,
   getOrdersByUser,
-  cancelOrder,
   deleteOrder,
+  cancelOrder,
   getOrderById,
   updateOrderStatus,
   orderPaymentViaKhalti,
-  confirmOrderPayment,
   orderPaymentViaCash,
+  confirmOrderPayment,
   getOrdersByMerchant,
   orderPaymentViaStripe,
 };

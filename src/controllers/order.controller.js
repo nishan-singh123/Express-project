@@ -14,7 +14,7 @@ const getOrders = async (req, res) => {
 
 const getOrdersByUser = async (req, res) => {
   const status = req.query?.status;
-  
+
   try {
     const data = await orderService.getOrdersByUser(status, req.user._id);
 
@@ -124,8 +124,10 @@ const confirmOrderPayment = async (req, res) => {
 };
 
 const getOrdersByMerchant = async (req, res) => {
+  const status = req.query?.status;
+
   try {
-    const data = await orderService.getOrdersByMerchant(req.user._id);
+    const data = await orderService.getOrdersByMerchant(req.user._id, status);
 
     res.json(data);
   } catch (error) {
